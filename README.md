@@ -146,23 +146,23 @@ I view infrastructure as software: version-controlled, auditable, testable, and 
 
 ```mermaid
 flowchart LR
-    Dev([Developer]) -->|Push Code| GHA[GitHub Actions CI]
-    GHA -->|Build & Push| GHCR[(GHCR Registry)]
-    GHA -->|Update Manifests| GitRepo[(GitOps Repo)]
+    Dev(["Developer"]) -->|"Push Code"| GHA["GitHub Actions CI"]
+    GHA -->|"Build & Push"| GHCR[("GHCR Registry")]
+    GHA -->|"Update Manifests"| GitRepo[("GitOps Repo")]
 
     subgraph AWS ["AWS Cloud · EKS Cluster (Terraform Managed)"]
         direction TB
-        Argo[ArgoCD Controller] -->|Continuous Sync| GitRepo
-        Argo -->|Deploy Workloads| App[Flask App + OpenTelemetry SDK]
+        Argo["ArgoCD Controller"] -->|"Continuous Sync"| GitRepo
+        Argo -->|"Deploy Workloads"| App["Flask App + OpenTelemetry SDK"]
         
         subgraph Telemetry ["LGTM Observability & Telemetry Pipeline"]
-            Alloy[Grafana Alloy Collector]
-            App -->|Metrics · Logs · Traces| Alloy
-            Alloy -->|Metrics Remote Write| Prom[Prometheus / Mimir]
-            Alloy -->|Structured Log Stream| Loki[Grafana Loki]
-            Alloy -->|Distributed Spans| Tempo[Grafana Tempo]
+            Alloy["Grafana Alloy Collector"]
+            App -->|"Metrics, Logs, Traces"| Alloy
+            Alloy -->|"Metrics Remote Write"| Prom["Prometheus / Mimir"]
+            Alloy -->|"Structured Log Stream"| Loki["Grafana Loki"]
+            Alloy -->|"Distributed Spans"| Tempo["Grafana Tempo"]
             
-            Prom --> Grafana[Grafana Dashboards & Service Graphs]
+            Prom --> Grafana["Grafana Dashboards & Service Graphs"]
             Loki --> Grafana
             Tempo --> Grafana
         end
@@ -195,15 +195,15 @@ flowchart LR
         MBranch["Production Branch (main)"]
     end
 
-    subgraph ModularPipeline ["Reusable Modular Pipeline Library (include / extends)"]
+    subgraph ModularPipeline ["Reusable Modular Pipeline Library"]
         direction TB
-        S1["01-build_and_test<br/>(Maven Verify & JUnit)"]
-        S2["02-sca_scan<br/>(Trivy Filesystem SCA)"]
-        S3["03-sast<br/>(SonarQube Code Quality)"]
-        S4["04-build_image<br/>(Docker Buildx + Layer Cache)"]
-        S5["05-trivy_image_scan<br/>(Container CVE Gate)"]
-        S6["06-promote_image<br/>(Crane Image Promotion: rc → prod)"]
-        S7["07-deploy_gitops<br/>(Kustomize Sync & Git Push)"]
+        S1["01-build_and_test: Maven Verify & JUnit"]
+        S2["02-sca_scan: Trivy Filesystem SCA"]
+        S3["03-sast: SonarQube Code Quality"]
+        S4["04-build_image: Docker Buildx + Layer Cache"]
+        S5["05-trivy_image_scan: Container CVE Gate"]
+        S6["06-promote_image: Crane Promotion (rc to prod)"]
+        S7["07-deploy_gitops: Kustomize Sync & Git Push"]
     end
 
     subgraph GitOpsCluster ["GitOps Deployment (ArgoCD)"]
@@ -217,10 +217,15 @@ flowchart LR
         ArgoSync --> ProdEnv
     end
 
-    FBranch --> S1 --> S2
-    DBranch --> S1 --> S2 --> S4 --> S5 --> S7
-    RBranch --> S1 --> S4 --> S5 --> S7
-    MBranch --> S6 --> S7
+    FBranch --> S1
+    S1 --> S2
+    DBranch --> S1
+    S2 --> S4
+    S4 --> S5
+    S5 --> S7
+    RBranch --> S1
+    MBranch --> S6
+    S6 --> S7
     S7 --> ArgoSync
 ```
 
@@ -245,7 +250,7 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-    DevPush([Developer Git Push]) --> Jenkins["Jenkins on Kubernetes<br/>(Ephemeral Dynamic Pod Agents)"]
+    DevPush(["Developer Git Push"]) --> Jenkins["Jenkins on Kubernetes (Dynamic Pod Agents)"]
     
     subgraph HardenedCI ["Hardened In-Cluster CI Pipeline"]
         direction TB
@@ -270,7 +275,7 @@ flowchart LR
         direction TB
         ArgoCD["ArgoCD GitOps Sync"]
         Workload["Django REST Pods (Non-root, Seccomp)"]
-        DB[(Neon PostgreSQL)]
+        DB[("Neon PostgreSQL")]
         FCM["Firebase Cloud Messaging"]
         
         ArgoCD --> Workload
@@ -301,38 +306,38 @@ flowchart LR
 
 ```mermaid
 flowchart TB
-    Client([HTTP / API Client])
+    Client(["HTTP / API Client"])
 
     subgraph Services ["Microservices Architecture"]
-        US["User Service<br/>Go · Fiber v2<br/>:8080 (Sole JWT Authority)"]
-        PS["Product Service<br/>Go · Fiber + gRPC Server<br/>:8081 / :50051"]
-        OS["Order Service<br/>Go · Fiber<br/>:8082"]
-        NS["Notification Service<br/>Python · Django/DRF<br/>:8000"]
+        US["User Service :8080 (Sole JWT Authority)"]
+        PS["Product Service :8081 / :50051 (gRPC)"]
+        OS["Order Service :8082"]
+        NS["Notification Service :8000"]
     end
 
     subgraph Databases ["Database-Per-Service Pattern"]
-        UDB[("users_db<br/>PostgreSQL")]
-        PDB[("products_db<br/>PostgreSQL")]
-        ODB[("orders_db<br/>PostgreSQL + outbox")]
-        NDB[("notification_db<br/>PostgreSQL")]
+        UDB[("users_db: PostgreSQL")]
+        PDB[("products_db: PostgreSQL")]
+        ODB[("orders_db: PostgreSQL + outbox")]
+        NDB[("notification_db: PostgreSQL")]
     end
 
     subgraph Broker ["Message Broker"]
-        RMQ{{"RabbitMQ Topic Exchange<br/>order.events"}}
+        RMQ{{"RabbitMQ Topic Exchange: order.events"}}
     end
 
-    Client -->|REST| US
-    Client -->|REST| OS
-    Client -->|REST| NS
+    Client -->|"REST"| US
+    Client -->|"REST"| OS
+    Client -->|"REST"| NS
 
     US --- UDB
     PS --- PDB
     OS --- ODB
     NS --- NDB
 
-    OS -->|gRPC :50051 (Stock & Price Validation)| PS
-    OS -.->|"Transactional Outbox<br/>(order.created / order.cancelled)"| RMQ
-    RMQ -->|"Async Consumer<br/>notification.order-events"| NS
+    OS -->|"gRPC :50051: Stock & Price Validation"| PS
+    OS -.->|"Transactional Outbox: order.created, order.cancelled"| RMQ
+    RMQ -->|"Async Consumer: notification.order-events"| NS
 ```
 
 - **Architecture Highlights:**
